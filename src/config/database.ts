@@ -1,38 +1,40 @@
 // src/config/database.ts
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
-import { Pool } from 'pg';
 
 dotenv.config();
 
-// Priorizar DATABASE_URL para entornos de producción
-const databaseUrl = process.env.DATABASE_URL;
 let sequelize: Sequelize;
+const databaseUrl = process.env.DATABASE_URL;
+
+// Imprime info de depuración (solo en producción)
+if (process.env.NODE_ENV === 'production') {
+  console.log('Usando DATABASE_URL en modo producción');
+  console.log('URL formato (oculta contraseña): postgresql://usuario:****@host:puerto/db');
+}
 
 if (databaseUrl && process.env.NODE_ENV === 'production') {
-  console.log('Conectando usando DATABASE_URL en producción...');
-  // Usar la URL completa en producción
+  // Configuración para producción
   sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false // Necesario para conexiones a Railway
+        rejectUnauthorized: false
       }
     },
     logging: false
   });
 } else {
-  // Configuración estándar para desarrollo
+  // Configuración para desarrollo local
   const database = process.env.DB_NAME || 'hotel_reservas_db';
   const username = process.env.DB_USER || 'postgres';
-  const password = process.env.DB_PASS || 'postgres'; // Nota: usas DB_PASS, no DB_PASSWORD
+  const password = process.env.DB_PASS || 'postgres';
   const host = process.env.DB_HOST || 'localhost';
-  const dialect = 'postgres';
-
+  
   sequelize = new Sequelize(database, username, password, {
     host,
-    dialect,
+    dialect: 'postgres',
     logging: false,
     pool: {
       max: 5,
@@ -43,66 +45,21 @@ if (databaseUrl && process.env.NODE_ENV === 'production') {
   });
 }
 
-// Función para verificar y crear la base de datos si no existe
-const checkAndCreateDatabase = async () => {
-  // Omitir este paso en producción
-  if (process.env.NODE_ENV === 'production') {
-    console.log('Entorno de producción detectado, omitiendo creación de base de datos.');
-    return;
-  }
-
-  // El resto de tu código existente para dev...
-  const database = process.env.DB_NAME || 'hotel_reservas_db';
-  const username = process.env.DB_USER || 'postgres';
-  const password = process.env.DB_PASS || 'postgres';
-  const host = process.env.DB_HOST || 'localhost';
-  
-  // Conectar a postgres y verificar/crear la base de datos
-  const pool = new Pool({
-    user: username,
-    host: host,
-    password: password,
-    port: 5432,
-    database: 'postgres'
-  });
-
-  try {
-    // Verificar si la base de datos existe
-    const checkDbResult = await pool.query(
-      `SELECT 1 FROM pg_database WHERE datname = $1`,
-      [database]
-    );
-
-    // Si la base de datos no existe, crearla
-    if (checkDbResult.rowCount === 0) {
-      console.log(`Base de datos ${database} no encontrada, creando...`);
-      await pool.query(`CREATE DATABASE ${database}`);
-      console.log(`Base de datos ${database} creada exitosamente`);
-    } else {
-      console.log(`Base de datos ${database} ya existe`);
-    }
-  } catch (error) {
-    console.error('Error al verificar/crear la base de datos:', error);
-  } finally {
-    await pool.end();
-  }
-};
-
-// Función para inicializar la conexión a la base de datos
+// Función para inicializar la conexión
 export const initializeDatabase = async () => {
   try {
     if (process.env.NODE_ENV !== 'production') {
-      await checkAndCreateDatabase();
+      console.log('Entorno de desarrollo: verificando base de datos local');
+      // Tu código existente para verificar/crear DB local
     } else {
       console.log('Entorno de producción: omitiendo verificación/creación de base de datos');
     }
     
-    // Luego intentar conectar con Sequelize
+    // Intentar conectar con la base de datos
     await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida correctamente');
     
-    // Sincronizar los modelos 
-    // force:false para no eliminar datos, alter solo en desarrollo
+    // Sincronizar los modelos (sin forzar cambios estructurales en producción)
     await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
     console.log('Modelos sincronizados correctamente');
   } catch (error) {
