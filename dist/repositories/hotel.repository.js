@@ -11,19 +11,29 @@ class HotelRepository {
      * Encuentra todos los hoteles que coincidan con los criterios de filtro
      */
     async findAll(criteria = {}) {
-        const { ciudad, categoria, destacado, precioMin, precioMax } = criteria;
+        const { ciudad, categoria, estrellas, destacado, precioMin, precioMax } = criteria;
         // Construir condiciones de búsqueda
         const whereConditions = {};
         if (destacado !== undefined) {
             whereConditions.destacado = destacado;
         }
+        // Preparar condiciones para Category
+        let categoryWhere = {};
         if (categoria) {
+            // Si se proporciona ID de categoría
             whereConditions.categoryId = categoria;
+        }
+        if (estrellas) {
+            // Si se proporciona número de estrellas
+            categoryWhere = {
+                ...categoryWhere,
+                estrellas
+            };
         }
         // Definir las relaciones a incluir
         return await models_1.Hotel.findAll({
             where: whereConditions,
-            include: this.getStandardIncludes(ciudad, precioMin, precioMax)
+            include: this.getStandardIncludes(ciudad, precioMin, precioMax, categoryWhere)
         });
     }
     /**
@@ -49,7 +59,7 @@ class HotelRepository {
     /**
      * Devuelve un arreglo con las relaciones estándar para incluir en las consultas
      */
-    getStandardIncludes(ciudad, precioMin, precioMax) {
+    getStandardIncludes(ciudad, precioMin, precioMax, categoryWhere = {}) {
         return [
             {
                 model: models_1.Address,
@@ -70,7 +80,8 @@ class HotelRepository {
             },
             {
                 model: models_1.Category,
-                as: 'categoria'
+                as: 'categoria',
+                where: Object.keys(categoryWhere).length > 0 ? categoryWhere : undefined
             },
             {
                 model: models_1.Rating,
@@ -89,6 +100,20 @@ class HotelRepository {
                 required: !!(precioMin || precioMax)
             }
         ];
+    }
+    /**
+     * Busca hoteles con datos de categoría enriquecidos
+     * Útil para dashboards y listados detallados
+     */
+    async findWithCategoryDetails(limit) {
+        const options = {
+            include: this.getStandardIncludes(),
+            order: [['destacado', 'DESC'], ['id', 'ASC']]
+        };
+        if (limit) {
+            options.limit = limit;
+        }
+        return await models_1.Hotel.findAll(options);
     }
 }
 exports.default = new HotelRepository();

@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// @ts-nocheck - Desactivamos TypeScript para este archivo debido a problemas con los tipos de Express
 // src/routes/room.routes.ts
 const express_1 = __importDefault(require("express"));
 const room_1 = require("../controllers/room");
