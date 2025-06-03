@@ -36,10 +36,9 @@ export const authMiddleware: RequestHandler = (req: Request, res: Response, next
   fetch(`${AUTH_SERVICE_URL}/api/auth/validate-token`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'text/plain',
       'Authorization': `Bearer ${token}`
-    },
-    body: token
+    }
+    // No agregues body ni Content-Type
   })
   .then(response => {
     if (!response.ok) {
